@@ -20,6 +20,7 @@ exports.handler = async (event) => {
   const AIRTABLE_TOKEN = process.env.AIRTABLE_TOKEN;
 
   if (!APP_PASSWORD || !AIRTABLE_TOKEN) {
+    console.log("Missing env vars — APP_PASSWORD set:", !!APP_PASSWORD, "AIRTABLE_TOKEN set:", !!AIRTABLE_TOKEN);
     return {
       statusCode: 500,
       headers: jsonHeaders,
@@ -27,8 +28,19 @@ exports.handler = async (event) => {
     };
   }
 
-  const providedPassword = event.headers["x-app-password"] || event.headers["X-App-Password"];
-  if (providedPassword !== APP_PASSWORD) {
+  const rawProvided = event.headers["x-app-password"] || event.headers["X-App-Password"] || "";
+  const providedPassword = rawProvided.trim();
+  const expectedPassword = APP_PASSWORD.trim();
+
+  // Temporary diagnostic logging — never logs the actual password values, only lengths,
+  // so you can see in the Netlify function logs why a comparison is failing.
+  console.log(
+    "Password check — provided length:", providedPassword.length,
+    "| expected length:", expectedPassword.length,
+    "| match:", providedPassword === expectedPassword
+  );
+
+  if (providedPassword !== expectedPassword) {
     return { statusCode: 401, headers: jsonHeaders, body: JSON.stringify({ error: "Incorrect password." }) };
   }
 
