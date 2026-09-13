@@ -1,0 +1,952 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Payment Intake — Ortho</title>
+<style>
+  :root{
+    --ink:#132622;
+    --ink-soft:#3E534D;
+    --bg:#F3F6F4;
+    --card:#FFFFFF;
+    --line:#DDE5E1;
+    --accent:#2F6E5C;
+    --accent-dark:#1F4E41;
+    --accent-tint:#E4F0EA;
+    --ledger:#B08A4E;
+    --error:#B3432E;
+    --error-tint:#FBEAE6;
+    --radius:14px;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--bg);
+    color:var(--ink);
+    font-family:var(--sans);
+    min-height:100vh;
+    padding-bottom:48px;
+  }
+  .wrap{max-width:480px;margin:0 auto;padding:0 18px;}
+
+  header{
+    padding:28px 18px 20px;
+    border-bottom:1px solid var(--line);
+    background:var(--card);
+  }
+  header .inner{max-width:480px;margin:0 auto;}
+  .brand{
+    display:flex;align-items:baseline;gap:8px;
+  }
+  .brand .mark{
+    width:9px;height:9px;border-radius:50%;
+    background:var(--accent);
+    flex-shrink:0;
+    transform:translateY(-2px);
+  }
+  h1{
+    font-size:21px;
+    font-weight:650;
+    letter-spacing:-0.01em;
+    margin:0;
+    color:var(--ink);
+  }
+  .sub{
+    margin:6px 0 0;
+    font-size:14px;
+    color:var(--ink-soft);
+    line-height:1.4;
+  }
+
+  main{padding-top:20px;}
+
+  .state-panel{
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:32px 20px;
+    text-align:center;
+    color:var(--ink-soft);
+    font-size:14px;
+  }
+  .spinner{
+    width:22px;height:22px;
+    margin:0 auto 14px;
+    border-radius:50%;
+    border:2.5px solid var(--line);
+    border-top-color:var(--accent);
+    animation:spin .8s linear infinite;
+  }
+  @keyframes spin{to{transform:rotate(360deg);}}
+
+  .retry-btn{
+    margin-top:14px;
+    background:none;border:1px solid var(--line);
+    color:var(--ink);
+    padding:8px 16px;border-radius:8px;
+    font-size:13px;cursor:pointer;
+  }
+
+  form{display:none;}
+  form.ready{display:block;}
+
+  .group{
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:18px 18px 6px;
+    margin-bottom:14px;
+  }
+  .group + .group{margin-top:14px;}
+  .group-title{
+    font-size:12.5px;
+    font-weight:650;
+    color:var(--ink-soft);
+    margin:0 0 12px;
+  }
+
+  .field{margin-bottom:14px;}
+  label{
+    display:block;
+    font-size:13px;
+    font-weight:600;
+    color:var(--ink);
+    margin-bottom:6px;
+  }
+  label .opt{font-weight:400;color:var(--ink-soft);}
+
+  input[type=text], input[type=date], input[type=number], input[type=tel],
+  select, textarea{
+    width:100%;
+    font-family:var(--sans);
+    font-size:15px;
+    padding:11px 12px;
+    border:1px solid var(--line);
+    border-radius:9px;
+    background:#fff;
+    color:var(--ink);
+    -webkit-appearance:none;
+    appearance:none;
+  }
+  input:focus, select:focus, textarea:focus{
+    outline:none;
+    border-color:var(--accent);
+    box-shadow:0 0 0 3px var(--accent-tint);
+  }
+  select{
+    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='14' height='9' viewBox='0 0 14 9'><path d='M1 1L7 7L13 1' stroke='%233E534D' stroke-width='1.6' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>");
+    background-repeat:no-repeat;
+    background-position:right 12px center;
+    padding-right:34px;
+  }
+  textarea{resize:vertical;min-height:64px;font-size:15px;}
+
+  .amount-field input{
+    font-family:var(--mono);
+    font-size:15.5px;
+  }
+  .amount-wrap{position:relative;}
+  .amount-wrap .sym{
+    position:absolute;left:12px;top:50%;transform:translateY(-50%);
+    color:var(--ink-soft);font-family:var(--mono);font-size:15px;
+    pointer-events:none;
+  }
+  .amount-wrap input{padding-left:26px;}
+
+  .patient-toggle{
+    display:flex;gap:8px;margin-bottom:12px;
+  }
+  .toggle-btn{
+    flex:1;
+    padding:9px 10px;
+    border-radius:8px;
+    border:1px solid var(--line);
+    background:#fff;
+    color:var(--ink-soft);
+    font-size:13px;
+    font-weight:600;
+    cursor:pointer;
+    text-align:center;
+  }
+  .toggle-btn.active{
+    background:var(--accent-dark);
+    border-color:var(--accent-dark);
+    color:#fff;
+  }
+
+  .hint{
+    font-size:12.5px;
+    color:var(--ink-soft);
+    margin-top:5px;
+  }
+  .hint.warn{color:var(--error);}
+
+  .submit-btn{
+    width:100%;
+    padding:15px;
+    border:none;
+    border-radius:11px;
+    background:var(--accent-dark);
+    color:#fff;
+    font-size:15.5px;
+    font-weight:650;
+    cursor:pointer;
+    margin-top:4px;
+  }
+  .submit-btn:disabled{opacity:.55;cursor:default;}
+  .submit-btn:active:not(:disabled){background:var(--ink);}
+
+  .banner{
+    border-radius:11px;
+    padding:13px 14px;
+    font-size:13.5px;
+    margin-bottom:14px;
+    line-height:1.45;
+    display:none;
+  }
+  .banner.show{display:block;}
+  .banner.error{background:var(--error-tint);color:var(--error);border:1px solid #F0CFC6;}
+
+  .receipt{
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:20px;
+    margin-bottom:16px;
+    position:relative;
+  }
+  .receipt::before{
+    content:"";
+    position:absolute;top:-1px;left:16px;right:16px;height:0;
+    border-top:1.5px dashed var(--line);
+  }
+  .receipt .check{
+    width:30px;height:30px;border-radius:50%;
+    background:var(--accent-tint);
+    display:flex;align-items:center;justify-content:center;
+    margin-bottom:10px;
+  }
+  .receipt .check svg{width:15px;height:15px;}
+  .receipt h3{margin:0 0 2px;font-size:16px;font-weight:650;}
+  .receipt p{margin:0;font-size:13px;color:var(--ink-soft);}
+  .receipt .rline{
+    display:flex;justify-content:space-between;
+    font-size:13.5px;padding:7px 0;border-top:1px solid var(--line);
+    margin-top:10px;
+  }
+  .receipt .rline span:first-child{color:var(--ink-soft);}
+  .receipt .rline span:last-child{font-family:var(--mono);font-weight:600;}
+
+  .log{margin-top:22px;}
+  .log-title{
+    font-size:12.5px;font-weight:650;color:var(--ink-soft);
+    margin:0 0 10px;padding:0 2px;
+  }
+  .log-item{
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:11px 13px;
+    display:flex;justify-content:space-between;align-items:center;
+    margin-bottom:8px;
+    font-size:13.5px;
+  }
+  .log-item .who{font-weight:600;}
+  .log-item .meta{color:var(--ink-soft);font-size:12px;margin-top:2px;}
+  .log-item .amt{font-family:var(--mono);color:var(--ledger);font-weight:650;}
+
+  .add-another{
+    width:100%;padding:13px;border-radius:11px;
+    border:1px solid var(--accent-dark);
+    background:#fff;color:var(--accent-dark);
+    font-size:14.5px;font-weight:650;cursor:pointer;
+  }
+</style>
+</head>
+<body>
+<header>
+  <div class="inner">
+    <div class="brand"><span class="mark"></span><h1>Payment Intake</h1></div>
+    <p class="sub">Record a payment received on behalf of the clinic. It's saved straight to the Income details table.</p>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <div id="passwordGate" class="state-panel" style="text-align:left;">
+    <p style="font-weight:650; font-size:15px; margin:0 0 12px; text-align:center;">Enter password to continue</p>
+    <input type="password" id="appPasswordInput" placeholder="Password" autocomplete="off" style="margin-bottom:12px;">
+    <button type="button" class="submit-btn" onclick="submitPassword()">Continue</button>
+    <div id="passwordError" style="color:var(--error); font-size:13px; margin-top:12px; text-align:center;"></div>
+  </div>
+
+  <div id="loadingPanel" class="state-panel" style="display:none;">
+    <div class="spinner"></div>
+    Loading clinics and patients…
+  </div>
+
+  <div id="loadErrorPanel" class="state-panel" style="display:none;">
+    Couldn't load the clinic and patient lists.
+    <div id="loadErrorDetail" style="margin-top:6px;font-size:12.5px;"></div>
+    <button class="retry-btn" onclick="loadLists()">Try again</button>
+  </div>
+
+  <div id="successView" style="display:none;"></div>
+
+  <form id="entryForm">
+    <div id="submitError" class="banner error"></div>
+
+    <div class="group">
+      <p class="group-title">Where &amp; who</p>
+      <div class="field">
+        <label for="clinicSelect">Clinic</label>
+        <select id="clinicSelect" required onchange="handleClinicChange()"></select>
+      </div>
+
+      <div class="field">
+        <label>Patient</label>
+        <div class="patient-toggle">
+          <button type="button" class="toggle-btn active" id="btnExisting" onclick="setPatientMode('existing')">Existing patient</button>
+          <button type="button" class="toggle-btn" id="btnNew" onclick="setPatientMode('new')">New patient</button>
+        </div>
+
+        <div id="existingPatientWrap">
+          <input type="text" id="patientInput" list="patientList" placeholder="Select a clinic first…" autocomplete="off" disabled>
+          <datalist id="patientList"></datalist>
+          <div class="hint" id="patientHint"></div>
+        </div>
+
+        <div id="newPatientWrap" style="display:none;">
+          <input type="text" id="newPatientName" placeholder="Patient's full name" style="margin-bottom:10px;">
+          <input type="tel" id="newPatientPhone" placeholder="Phone number (optional)" style="margin-bottom:10px;">
+          <div style="display:flex; gap:10px; margin-bottom:10px;">
+            <div style="flex:1;">
+              <label for="newPatientDob" style="font-size:12px; margin-bottom:4px;">Date of birth <span class="opt">(optional)</span></label>
+              <input type="date" id="newPatientDob">
+            </div>
+            <div style="flex:1;">
+              <label for="newPatientGender" style="font-size:12px; margin-bottom:4px;">Gender <span class="opt">(optional)</span></label>
+              <select id="newPatientGender">
+                <option value="" selected>Select…</option>
+                <option>Male</option>
+                <option>Female</option>
+                <option>Other</option>
+                <option>Prefer not to say</option>
+              </select>
+            </div>
+          </div>
+          <input type="email" id="newPatientEmail" placeholder="Email (optional)">
+        </div>
+      </div>
+    </div>
+
+    <div class="group">
+      <p class="group-title">Treatment</p>
+      <div class="field">
+        <label for="dateInput">Date</label>
+        <input type="date" id="dateInput" required>
+      </div>
+      <div class="field">
+        <label for="treatmentSelect">Treatment offered</label>
+        <select id="treatmentSelect" required onchange="handleTreatmentChange()">
+          <option value="" disabled selected>Select…</option>
+        </select>
+        <div id="newTreatmentWrap" style="display:none; margin-top:10px;">
+          <input type="text" id="newTreatmentInput" placeholder="Type the new treatment name">
+        </div>
+      </div>
+    </div>
+
+    <div class="group">
+      <p class="group-title">Payment</p>
+      <div class="field amount-field">
+        <label for="quoteInput">Quote <span class="opt">(saved on the patient's record)</span></label>
+        <div class="amount-wrap"><span class="sym">₹</span>
+          <input type="number" id="quoteInput" min="0" step="1" placeholder="0" inputmode="decimal">
+        </div>
+        <div class="hint" id="balanceHint"></div>
+      </div>
+      <div class="field amount-field">
+        <label for="paidInput">Amount paid by patient</label>
+        <div class="amount-wrap"><span class="sym">₹</span>
+          <input type="number" id="paidInput" min="0" step="1" placeholder="0" inputmode="decimal" required>
+        </div>
+      </div>
+      <div class="field">
+        <label for="modeSelect">Mode of payment</label>
+        <select id="modeSelect" required onchange="updateInstrumentHint()">
+          <option value="" disabled selected>Select…</option>
+          <option>Cash</option>
+          <option>CHQ</option>
+          <option>Bank Transfer</option>
+          <option>UPI</option>
+          <option>QR Code</option>
+          <option>Other</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="instrumentInput">Reference / instrument no. <span class="opt">(optional)</span></label>
+        <input type="text" id="instrumentInput" placeholder="e.g. cheque no., UPI ref">
+      </div>
+      <div class="field">
+        <label for="notesInput">Notes <span class="opt">(optional)</span></label>
+        <textarea id="notesInput" placeholder="Anything worth flagging…"></textarea>
+      </div>
+      <div class="field">
+        <label for="photoInput">Payment proof <span class="opt">(optional — receipt, cheque, screenshot)</span></label>
+        <input type="file" id="photoInput" accept="image/*" capture="environment" onchange="handlePhotoChange()">
+        <div id="photoPreviewWrap" style="display:none; margin-top:10px;">
+          <img id="photoPreviewImg" alt="Payment proof preview" style="max-width:100%; border-radius:9px; border:1px solid var(--line); display:block;">
+          <button type="button" onclick="clearPhoto()" style="margin-top:8px; background:none; border:1px solid var(--line); color:var(--ink-soft); padding:6px 12px; border-radius:8px; font-size:12.5px; cursor:pointer;">Remove photo</button>
+        </div>
+      </div>
+    </div>
+
+    <button type="submit" class="submit-btn" id="submitBtn">Record payment</button>
+  </form>
+
+  <div class="log" id="logSection" style="display:none;">
+    <p class="log-title">Recorded this session</p>
+    <div id="logList"></div>
+  </div>
+
+</main>
+
+<script>
+const FUNCTION_URL = "/.netlify/functions/airtable";
+const TBL_INCOME = "tblPtsdIs9rnIiNUg";
+const TBL_PATIENTS = "tblPcox0V6hnGh0YJ";
+const TBL_CLINICS = "tbljzdDjQUe88uGuB";
+const DEFAULT_TREATMENTS = ["Invisalign Comprehensive", "invisalign Lite", "Metal SL Braces", "Ceramic SL braces"];
+const NEW_TREATMENT_VALUE = "__new__";
+const FLD_PAYMENT_PROOF = "fldl8iM52sH2vOdH0";
+
+let clinics = [];
+let patients = [];
+let treatments = [];
+let patientMode = "existing";
+let sessionLog = [];
+let selectedPhotoFile = null;
+let appPassword = "";
+
+function $(id){ return document.getElementById(id); }
+
+async function fetchWithTimeout(url, options, timeoutMs){
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs || 20000);
+  try{
+    return await fetch(url, { ...(options || {}), signal: controller.signal });
+  }catch(err){
+    if(err.name === "AbortError"){
+      throw new Error("The request timed out. Check your internet connection and try again.");
+    }
+    throw new Error("Network error — check your internet connection and try again.");
+  }finally{
+    clearTimeout(timer);
+  }
+}
+
+async function callProxy(action, payload, timeoutMs){
+  const res = await fetchWithTimeout(FUNCTION_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-App-Password": appPassword
+    },
+    body: JSON.stringify({ action, ...(payload || {}) })
+  }, timeoutMs);
+
+  if(res.status === 401){
+    const err = new Error("Incorrect password.");
+    err.unauthorized = true;
+    throw err;
+  }
+
+  let data = {};
+  try{ data = await res.json(); }catch(e){ /* ignore */ }
+
+  if(!res.ok){
+    throw new Error(data.error || `Request failed (${res.status})`);
+  }
+  return data;
+}
+
+function submitPassword(){
+  const val = $("appPasswordInput").value;
+  if(!val) return;
+  appPassword = val;
+  $("passwordGate").style.display = "none";
+  $("passwordError").textContent = "";
+  loadLists();
+}
+
+function showPasswordGate(message){
+  appPassword = "";
+  $("loadingPanel").style.display = "none";
+  $("loadErrorPanel").style.display = "none";
+  $("entryForm").classList.remove("ready");
+  $("passwordGate").style.display = "block";
+  $("passwordError").textContent = message || "";
+  $("appPasswordInput").value = "";
+  $("appPasswordInput").focus();
+}
+
+$("appPasswordInput").addEventListener("keydown", (e) => {
+  if(e.key === "Enter") submitPassword();
+});
+
+function handlePhotoChange(){
+  const file = $("photoInput").files && $("photoInput").files[0];
+  if(!file){
+    selectedPhotoFile = null;
+    $("photoPreviewWrap").style.display = "none";
+    return;
+  }
+  selectedPhotoFile = file;
+  const reader = new FileReader();
+  reader.onload = () => {
+    $("photoPreviewImg").src = reader.result;
+    $("photoPreviewWrap").style.display = "block";
+  };
+  reader.readAsDataURL(file);
+}
+
+function clearPhoto(){
+  selectedPhotoFile = null;
+  $("photoInput").value = "";
+  $("photoPreviewWrap").style.display = "none";
+}
+
+function fileToBase64(file){
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result).split(",")[1]);
+    reader.onerror = () => reject(new Error("Couldn't read the photo file."));
+    reader.readAsDataURL(file);
+  });
+}
+
+async function uploadAttachment(recordId, fieldId, file){
+  const base64 = await fileToBase64(file);
+  return callProxy("uploadAttachment", {
+    recordId,
+    fieldId,
+    contentType: file.type || "image/jpeg",
+    file: base64,
+    filename: file.name || `payment-proof-${Date.now()}.jpg`
+  }, 30000);
+}
+
+async function airtableGetDistinctValues(tableId, fieldName){
+  let records = [];
+  let offset;
+  do{
+    const data = await callProxy("list", { tableId, fields: [fieldName], pageSize: 100, offset });
+    records = records.concat(data.records || []);
+    offset = data.offset;
+  }while(offset);
+  const values = records.map(r => r.fields[fieldName]).filter(Boolean);
+  return Array.from(new Set(values));
+}
+
+async function airtableGet(tableId, fieldName){
+  let records = [];
+  let offset;
+  do{
+    const data = await callProxy("list", { tableId, fields: [fieldName], pageSize: 100, offset });
+    records = records.concat(data.records || []);
+    offset = data.offset;
+  }while(offset);
+  return records
+    .map(r => ({ id: r.id, name: r.fields[fieldName] }))
+    .filter(r => r.name);
+}
+
+async function airtableCreate(tableId, fields, typecast){
+  const data = await callProxy("create", { tableId, fields, typecast: !!typecast });
+  return data.records[0];
+}
+
+async function airtableUpdate(tableId, recordId, fields, typecast){
+  const data = await callProxy("update", { tableId, recordId, fields, typecast: !!typecast });
+  return data.records[0];
+}
+
+async function airtableGetPatientsWithClinic(){
+  let records = [];
+  let offset;
+  do{
+    const data = await callProxy("list", {
+      tableId: TBL_PATIENTS,
+      fields: ["Patient Name", "Clinic location", "Balance"],
+      pageSize: 100,
+      offset
+    });
+    records = records.concat(data.records || []);
+    offset = data.offset;
+  }while(offset);
+  return records
+    .filter(r => r.fields["Patient Name"])
+    .map(r => ({
+      id: r.id,
+      name: r.fields["Patient Name"],
+      clinicIds: Array.isArray(r.fields["Clinic location"]) ? r.fields["Clinic location"] : [],
+      balance: typeof r.fields["Balance"] === "number" ? r.fields["Balance"] : null
+    }));
+}
+
+async function loadLists(){
+  $("loadingPanel").style.display = "block";
+  $("loadErrorPanel").style.display = "none";
+  $("entryForm").classList.remove("ready");
+
+  try{
+    const [clinicRecs, patientRecs, treatmentVals] = await Promise.all([
+      airtableGet(TBL_CLINICS, "Clinic Name"),
+      airtableGetPatientsWithClinic(),
+      airtableGetDistinctValues(TBL_INCOME, "Treatment offered")
+    ]);
+    clinics = clinicRecs;
+    patients = patientRecs;
+    treatments = Array.from(new Set([...DEFAULT_TREATMENTS, ...treatmentVals])).sort((a, b) => a.localeCompare(b));
+    renderLists();
+    $("loadingPanel").style.display = "none";
+    $("entryForm").classList.add("ready");
+  }catch(err){
+    if(err.unauthorized){
+      showPasswordGate("Incorrect password. Please try again.");
+      return;
+    }
+    $("loadingPanel").style.display = "none";
+    $("loadErrorPanel").style.display = "block";
+    $("loadErrorDetail").textContent = err.message || "Unknown error";
+  }
+}
+
+function renderLists(){
+  const clinicSelect = $("clinicSelect");
+  const prevClinic = clinicSelect.value;
+  clinicSelect.innerHTML = '<option value="" disabled' + (prevClinic ? '' : ' selected') + '>Select a clinic…</option>' +
+    clinics.map(c => `<option value="${c.id}"${c.id === prevClinic ? ' selected' : ''}>${escapeHtml(c.name)}</option>`).join("");
+
+  renderPatientOptions();
+
+  const treatmentSelect = $("treatmentSelect");
+  const prevValue = treatmentSelect.value;
+  treatmentSelect.innerHTML = '<option value="" disabled' + (prevValue ? '' : ' selected') + '>Select…</option>' +
+    treatments.map(t => `<option${t === prevValue ? ' selected' : ''}>${escapeHtml(t)}</option>`).join("") +
+    `<option value="${NEW_TREATMENT_VALUE}">+ Add new treatment…</option>`;
+}
+
+function renderPatientOptions(){
+  const clinicId = $("clinicSelect").value;
+  const input = $("patientInput");
+  const datalist = $("patientList");
+
+  if(!clinicId){
+    datalist.innerHTML = "";
+    input.value = "";
+    input.disabled = true;
+    input.placeholder = "Select a clinic first…";
+    return;
+  }
+
+  const clinicPatients = patients.filter(p => p.clinicIds.includes(clinicId));
+  datalist.innerHTML = clinicPatients.map(p => `<option value="${escapeHtml(p.name)}">`).join("");
+  input.disabled = false;
+  input.placeholder = "Start typing a name…";
+}
+
+function handleClinicChange(){
+  $("patientInput").value = "";
+  $("patientHint").textContent = "";
+  renderPatientOptions();
+  updateBalanceHint();
+}
+
+function findMatchedPatient(name, clinicId){
+  if(!name || !clinicId) return null;
+  return patients.find(p => p.clinicIds.includes(clinicId) && p.name.toLowerCase() === name.toLowerCase()) || null;
+}
+
+function formatRupees(n){
+  return "₹" + Number(n).toLocaleString("en-IN");
+}
+
+function updateBalanceHint(){
+  const hint = $("balanceHint");
+  if(patientMode !== "existing"){
+    hint.textContent = "";
+    return;
+  }
+  const clinicId = $("clinicSelect").value;
+  const name = $("patientInput").value.trim();
+  const match = findMatchedPatient(name, clinicId);
+  if(!match){
+    hint.textContent = "";
+    return;
+  }
+  hint.textContent = match.balance !== null
+    ? `Balance on file: ${formatRupees(match.balance)}`
+    : "No balance on file for this patient yet.";
+  hint.classList.remove("warn");
+}
+
+function handleTreatmentChange(){
+  const val = $("treatmentSelect").value;
+  const wrap = $("newTreatmentWrap");
+  if(val === NEW_TREATMENT_VALUE){
+    wrap.style.display = "block";
+    $("newTreatmentInput").focus();
+  }else{
+    wrap.style.display = "none";
+    $("newTreatmentInput").value = "";
+  }
+}
+
+function escapeHtml(s){
+  return String(s).replace(/[&<>"']/g, m => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));
+}
+
+function setPatientMode(mode){
+  patientMode = mode;
+  $("btnExisting").classList.toggle("active", mode === "existing");
+  $("btnNew").classList.toggle("active", mode === "new");
+  $("existingPatientWrap").style.display = mode === "existing" ? "block" : "none";
+  $("newPatientWrap").style.display = mode === "new" ? "block" : "none";
+  updateBalanceHint();
+}
+
+function updateInstrumentHint(){
+  const mode = $("modeSelect").value;
+  const el = $("instrumentInput");
+  const hints = {
+    "CHQ": "e.g. cheque number",
+    "Bank Transfer": "e.g. UTR / transaction ID",
+    "UPI": "e.g. UPI reference ID",
+    "QR Code": "e.g. transaction ID"
+  };
+  el.placeholder = hints[mode] || "e.g. cheque no., UPI ref";
+}
+
+$("patientInput").addEventListener("input", () => {
+  const val = $("patientInput").value.trim();
+  const hint = $("patientHint");
+  const clinicId = $("clinicSelect").value;
+  if(!val){ hint.textContent = ""; hint.classList.remove("warn"); updateBalanceHint(); return; }
+  const match = findMatchedPatient(val, clinicId);
+  if(match){
+    hint.textContent = "";
+    hint.classList.remove("warn");
+  }else{
+    const sameNameElsewhere = patients.some(p => !p.clinicIds.includes(clinicId) && p.name.toLowerCase() === val.toLowerCase());
+    hint.textContent = sameNameElsewhere
+      ? "This patient is registered at a different clinic. Switch to \u201cNew patient\u201d to add them here too."
+      : "No exact match — check spelling, or switch to \u201cNew patient\u201d to add them.";
+    hint.classList.add("warn");
+  }
+  updateBalanceHint();
+});
+
+// Default date to today
+$("dateInput").value = new Date().toISOString().slice(0,10);
+
+$("entryForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  $("submitError").classList.remove("show");
+
+  const clinicId = $("clinicSelect").value;
+  const clinicName = $("clinicSelect").selectedOptions[0]?.textContent || "";
+  const date = $("dateInput").value;
+  let treatment = $("treatmentSelect").value;
+  const isNewTreatment = treatment === NEW_TREATMENT_VALUE;
+  if(isNewTreatment){
+    treatment = $("newTreatmentInput").value.trim();
+  }
+  const quote = $("quoteInput").value;
+  const paid = $("paidInput").value;
+  const mode = $("modeSelect").value;
+  const instrument = $("instrumentInput").value.trim();
+  const notes = $("notesInput").value.trim();
+
+  let patientName = "";
+  let existingPatientId = "";
+  let existingPatientBalance = null;
+  let newPatientPhone = "";
+  let newPatientDob = "";
+  let newPatientGender = "";
+  let newPatientEmail = "";
+
+  if(patientMode === "existing"){
+    patientName = $("patientInput").value.trim();
+    const match = findMatchedPatient(patientName, clinicId);
+    if(!match){
+      showSubmitError("That patient wasn't found for this clinic. Switch to \u201cNew patient\u201d to add them, or check the spelling.");
+      return;
+    }
+    existingPatientId = match.id;
+    existingPatientBalance = match.balance;
+  }else{
+    patientName = $("newPatientName").value.trim();
+    newPatientPhone = $("newPatientPhone").value.trim();
+    newPatientDob = $("newPatientDob").value;
+    newPatientGender = $("newPatientGender").value;
+    newPatientEmail = $("newPatientEmail").value.trim();
+    if(!patientName){
+      showSubmitError("Enter the new patient's name.");
+      return;
+    }
+  }
+
+  if(!clinicId){ showSubmitError("Select a clinic."); return; }
+  if(!treatment){ showSubmitError("Select the treatment offered."); return; }
+  if(paid === ""){ showSubmitError("Enter the amount paid by the patient."); return; }
+  if(!mode){ showSubmitError("Select the mode of payment."); return; }
+
+  const btn = $("submitBtn");
+  btn.disabled = true;
+  btn.textContent = "Saving…";
+
+  try{
+    let patientId = existingPatientId;
+
+    if(patientMode === "new"){
+      const newPatientFields = { "Patient Name": patientName, "Clinic location": [clinicId] };
+      if(newPatientPhone) newPatientFields["Phone Number"] = newPatientPhone;
+      if(newPatientDob) newPatientFields["Date of Birth"] = newPatientDob;
+      if(newPatientGender) newPatientFields["Gender"] = newPatientGender;
+      if(newPatientEmail) newPatientFields["Email"] = newPatientEmail;
+      if(quote !== "") newPatientFields["Quote"] = Number(quote);
+      const patientRec = await airtableCreate(TBL_PATIENTS, newPatientFields);
+      patientId = patientRec.id;
+      // Keep the local list in sync so this patient is pickable right away next time
+      patients.push({ id: patientId, name: patientName, clinicIds: [clinicId], balance: null });
+    }else if(quote !== ""){
+      await airtableUpdate(TBL_PATIENTS, patientId, { "Quote": Number(quote) });
+    }
+
+    let finalNotes = notes;
+    if(existingPatientBalance !== null && Number(paid) > existingPatientBalance){
+      finalNotes = finalNotes ? `${finalNotes} — New quote raised` : "New quote raised";
+    }
+
+    const incomeFields = {
+      "Date": date,
+      "Clinic": [clinicId],
+      "Patient": [patientId],
+      "Treatment offered": treatment,
+      "Amount Paid By Patient": Number(paid),
+      "Mode of payment": mode
+    };
+    if(instrument) incomeFields["Instrument with no"] = instrument;
+    if(finalNotes) incomeFields["Notes"] = finalNotes;
+
+    const incomeRec = await airtableCreate(TBL_INCOME, incomeFields, isNewTreatment);
+
+    let photoWarning = "";
+    if(selectedPhotoFile){
+      try{
+        await uploadAttachment(incomeRec.id, FLD_PAYMENT_PROOF, selectedPhotoFile);
+      }catch(err){
+        photoWarning = "Saved, but the photo didn't upload: " + (err.message || "unknown error");
+      }
+    }
+
+    if(isNewTreatment && !treatments.includes(treatment)){
+      treatments = [...treatments, treatment].sort((a, b) => a.localeCompare(b));
+    }
+
+    sessionLog.unshift({ patient: patientName, clinic: clinicName, amount: paid, date, mode });
+    showReceipt({ patient: patientName, clinic: clinicName, amount: paid, date, treatment, mode, warning: photoWarning });
+    renderLog();
+    renderLists();
+    resetFormAfterSuccess(clinicId);
+  }catch(err){
+    if(err.unauthorized){
+      showPasswordGate("Your session needs the password again.");
+    }else{
+      showSubmitError(err.message || "Something went wrong saving this entry. Please try again.");
+    }
+  }finally{
+    btn.disabled = false;
+    btn.textContent = "Record payment";
+  }
+});
+
+function showSubmitError(msg){
+  const el = $("submitError");
+  el.textContent = msg;
+  el.classList.add("show");
+}
+
+function showReceipt(entry){
+  $("entryForm").classList.remove("ready");
+  const view = $("successView");
+  view.style.display = "block";
+  view.innerHTML = `
+    <div class="receipt">
+      <div class="check">
+        <svg viewBox="0 0 20 20" fill="none"><path d="M4 10.5L8 14.5L16 6" stroke="#2F6E5C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </div>
+      <h3>Payment recorded</h3>
+      <p>Saved to Income details for ${escapeHtml(entry.clinic)}.</p>
+      <div class="rline"><span>Patient</span><span>${escapeHtml(entry.patient)}</span></div>
+      <div class="rline"><span>Treatment</span><span>${escapeHtml(entry.treatment)}</span></div>
+      <div class="rline"><span>Amount paid</span><span>₹${escapeHtml(entry.amount)}</span></div>
+      <div class="rline"><span>Mode</span><span>${escapeHtml(entry.mode)}</span></div>
+      <div class="rline"><span>Date</span><span>${escapeHtml(entry.date)}</span></div>
+      ${entry.warning ? `<p style="color:var(--error); font-size:12.5px; margin-top:12px;">${escapeHtml(entry.warning)}</p>` : ""}
+    </div>
+    <button class="add-another" onclick="backToForm()">Record another payment</button>
+  `;
+}
+
+function backToForm(){
+  $("successView").style.display = "none";
+  $("successView").innerHTML = "";
+  $("entryForm").classList.add("ready");
+}
+
+function resetFormAfterSuccess(keepClinicId){
+  $("clinicSelect").value = keepClinicId;
+  $("patientInput").value = "";
+  $("newPatientName").value = "";
+  $("newPatientPhone").value = "";
+  $("newPatientDob").value = "";
+  $("newPatientGender").value = "";
+  $("newPatientEmail").value = "";
+  $("patientHint").textContent = "";
+  setPatientMode("existing");
+  $("treatmentSelect").value = "";
+  handleTreatmentChange();
+  $("quoteInput").value = "";
+  $("paidInput").value = "";
+  $("modeSelect").value = "";
+  $("instrumentInput").value = "";
+  $("instrumentInput").placeholder = "e.g. cheque no., UPI ref";
+  $("notesInput").value = "";
+  clearPhoto();
+  $("submitError").classList.remove("show");
+}
+
+function renderLog(){
+  if(sessionLog.length === 0) return;
+  $("logSection").style.display = "block";
+  $("logList").innerHTML = sessionLog.map(e => `
+    <div class="log-item">
+      <div>
+        <div class="who">${escapeHtml(e.patient)}</div>
+        <div class="meta">${escapeHtml(e.clinic)} · ${escapeHtml(e.date)}</div>
+      </div>
+      <div class="amt">₹${escapeHtml(e.amount)}</div>
+    </div>
+  `).join("");
+}
+
+$("appPasswordInput").focus();
+</script>
+</body>
+</html>
