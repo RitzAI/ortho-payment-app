@@ -61,8 +61,7 @@ exports.handler = async (event) => {
       url.searchParams.set("pageSize", String(pageSize || 100));
       if (offset) url.searchParams.set("offset", offset);
       const res = await fetch(url, { headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` } });
-      const data = await res.json();
-      return { statusCode: res.status, headers: jsonHeaders, body: JSON.stringify(data) };
+      return await relayAirtableResponse(res, jsonHeaders);
     }
 
     if (action === "create") {
@@ -72,8 +71,7 @@ exports.handler = async (event) => {
         headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}`, "Content-Type": "application/json" },
         body: JSON.stringify({ records: [{ fields }], typecast: !!typecast })
       });
-      const data = await res.json();
-      return { statusCode: res.status, headers: jsonHeaders, body: JSON.stringify(data) };
+      return await relayAirtableResponse(res, jsonHeaders);
     }
 
     if (action === "update") {
@@ -83,8 +81,7 @@ exports.handler = async (event) => {
         headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}`, "Content-Type": "application/json" },
         body: JSON.stringify({ records: [{ id: recordId, fields }], typecast: !!typecast })
       });
-      const data = await res.json();
-      return { statusCode: res.status, headers: jsonHeaders, body: JSON.stringify(data) };
+      return await relayAirtableResponse(res, jsonHeaders);
     }
 
     if (action === "uploadAttachment") {
@@ -97,8 +94,7 @@ exports.handler = async (event) => {
           body: JSON.stringify({ contentType, file, filename })
         }
       );
-      const data = await res.json();
-      return { statusCode: res.status, headers: jsonHeaders, body: JSON.stringify(data) };
+      return await relayAirtableResponse(res, jsonHeaders);
     }
 
     return { statusCode: 400, headers: jsonHeaders, body: JSON.stringify({ error: "Unknown action." }) };
@@ -110,3 +106,25 @@ exports.handler = async (event) => {
     };
   }
 };
+
+// Forwards an Airtable API response to the client — but if Airtable itself
+// rejects our token (401/403), we remap that to 502 instead of passing 401
+// straight through, so the browser never confuses "Airtable token is bad"
+// with "you typed the wrong app password."
+async function relayAirtableResponse(res, jsonHeaders) {
+  const data = await res.json().catch(() => ({}));
+
+  if (res.status === 401 || res.status === 403) {
+    console.log("Airtable rejected the request — check AIRTABLE_TOKEN. Airtable status:", res.status, "message:", data?.error?.message || data?.error);
+    return {
+      statusCode: 502,
+      headers: jsonHeaders,
+      body: JSON.stringify({
+        error: "Airtable rejected the request — the AIRTABLE_TOKEN in Netlify's environment variables may be invalid, mistyped, or revoked. (Airtable said: " +
+          (data?.error?.message || data?.error?.type || res.status) + ")"
+      })
+    };
+  }
+
+  return { statusCode: res.status, headers: jsonHeaders, body: JSON.stringify(data) };
+}
